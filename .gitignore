@@ -1,20 +1,23 @@
 # file này để chứa list danh sách các file ko được up lên github
 
-# virtual environment
-venv/
+# Environment
+.env
 .venv/
+venv/
 env/
-.env/
-# chứa cấu hình URI, API_KEY,... quan trọng ko bao giờ được up lên public
 
-# Editor/IDE files
+# IDE
 .vscode/
 .idea/
 
-# Byte-compiled / optimized / compiled files
+# Python cache
 __pycache__/
 *.pyc
 *.pyd
 *.pyo
 *.egg-info/
 .eggs/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,3 +1,0 @@
-{
-    "python.analysis.extraPaths": ["${workspaceFolder}/src"] // copy path từ launch.json
-}
