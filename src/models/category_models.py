@@ -108,14 +108,20 @@ class CategoryModel:
         return result
 
     # Nút tim kiếm category theo type
-    def get_category_by_test(self, type: str):
+    def get_category_by_type(self, type: str):
         result = self.collection.find({"type": type})
-        return result
+        return list(result)
+    
+    # Hàm đếm tất cả category
+    def count_total(self):
+        result = self.collection.find({})
+        return len(list(result))
 
 #'''
 if __name__== "__main__":
     print("Init category collection")
     cate = CategoryModel() 
+    cate.get_category_by_type(type="Income")
     # gán cate chỉ dùng khi test file 1 mình, cate là 1 object (instance) của class CategoryModel, để xem class có lỗi hay không
     # gán cate để dễ debug (có thể mở Python REPL hay debug và kiểm tra) -> ví dụ lấy cate print(cate.collection) để kiểm tra
 #'''

@@ -1,18 +1,19 @@
 from core.database_manager import DatabaseManager
-from core import config
 from models.category_models import CategoryModel
 from models.transaction_models import TransactionModel 
 
 if __name__ == "__main__":
 
-    print("===== TEST DATABASE =====")
+    print("\n===== TEST DATABASE =====")
     DB = DatabaseManager()
 
-    print("===== TEST CONFIG =====")
-    test = config.COLLECTIONS['category']
-
-    print("===== TEST CATEGORY MODEL =====")
+    print("\n===== TEST CRUD =====")
+    print("== TEST CATEGORY MODEL ==")
     cate = CategoryModel()
+    cate.add_category(type="expense", category_name="clothing")    
+    print("Category added successfully!")
 
-    print("===== TEST TRANSACTION MODEL =====")
+    print("\n== TEST TRANSACTION MODEL ==")
     tran = TransactionModel()
+    tran.add_transaction({"type": "expense", "category": "clothing", "amount": 1000})
+    print("Transaction added successfully!")
