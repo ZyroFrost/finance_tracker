@@ -1,23 +1,33 @@
-# file này để chứa list danh sách các file ko được up lên github
-
-# Environment
+# Environment variables
 .env
-.venv/
-venv/
+.env.local
+.env.*.local
+
+# Streamlit secrets and config
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 env/
+venv/
+*.egg-info/
+dist/
+build/
 
 # IDE
 .vscode/
 .idea/
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyd
-*.pyo
-*.egg-info/
-.eggs/
+*.swp
+*.swo
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Other
+*.log
+.ipynb_checkpoints/
