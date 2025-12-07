@@ -150,7 +150,7 @@ git commit -m "Update app"
 git push
 ```
 
-## Project structure in local (How It Should Look)
+## 📁 Project structure in local (How It Should Look)
 ```bash
 .
 └── finance_tracker/
