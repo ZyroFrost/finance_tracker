@@ -150,7 +150,8 @@ git commit -m "Update app"
 git push
 ```
 
-## Project structure in local (how It Should Look)
+## Project structure in local (How It Should Look)
+```bash
 .
 └── finance_tracker/
     ├── .streamlit/
@@ -186,3 +187,4 @@ git push
             ├── categories_view.py
             ├── settings_view.py
             └── transactions_view.py
+```
