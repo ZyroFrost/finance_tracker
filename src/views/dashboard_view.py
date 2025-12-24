@@ -1,4 +1,4 @@
-from assets.styles import container_page_css
+from assets.styles import container_page_css, container_main_css
 from models.transaction_model import TransactionModel
 from models.category_model import CategoryModel
 from analytics.analyzer import FinanceAnalyzer
@@ -48,27 +48,14 @@ def render_dashboard_func_panel(category_model: CategoryModel, transaction_model
     # Filter popover
     with cFilter:
         with st.popover("Filter", icon="🔎", use_container_width=True):    
-            # Select type
-            st.selectbox("↔️ Transaction Type", get_type_list(), key="dashboard_type")
-
-            # Select category 
-            st.selectbox("📦 Category Name", options=category_model.get_category_name_by_type(st.session_state.dashboard_type), key="dashboard_category_name")
             
             # Select date range
             st.select_slider("📅 Date Range Option", options=list(get_date_range_options().keys()), value="Last 30 Days", key="dashboard_date_range") # set default = "All Time"
 
-            # Select currency
-            st.selectbox("💰 Currency", get_currencies_list(), key="dashboard_currencies")
-
-            # Select amount
-            min, max = st.columns(2)
-            with min:
-                st.number_input("🔽 Minimum Amount", min_value=0, value=0, key="dashboard_min_amount")
-            with max:
-                st.number_input("🔼 Maximum Amount", min_value=0, value=0, key="dashboard_max_amount")
-
 def render_metric(analyzer: FinanceAnalyzer, start_date, end_date):
     """Render the metrics cards at the top of dashboard"""
+    default_currency = analyzer.user_model.get_default_currency(analyzer.user_id)
+
     if start_date and end_date:
         total_income = analyzer.calculate_total_by_type('Income', start_date, end_date)
         total_expense = analyzer.calculate_total_by_type('Expense', start_date, end_date)
@@ -78,11 +65,10 @@ def render_metric(analyzer: FinanceAnalyzer, start_date, end_date):
     
     net_balance = total_income - total_expense
 
-
     # Render metrics
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        total_income = get_format_amount("VND", total_income)
+        total_income = get_format_amount(default_currency, total_income)
         # res_income = analyzer.compare_periods(start_date, end_date, 'Income')
         # print(res_income)
         # delta = f'{res_income["percent"]:.2f}%' if res_income["percent"] is not None else "N/A"
@@ -90,40 +76,42 @@ def render_metric(analyzer: FinanceAnalyzer, start_date, end_date):
 
         st.metric("💰 Total Income", total_income, border=True)
     with col2:
-        st.metric("💸 Total Expense", get_format_amount("VND", total_expense), border=True)
+        st.metric("💸 Total Expense", get_format_amount(default_currency, total_expense), border=True)
     with col3:
-        st.metric("💳 Net Balance", get_format_amount("VND",net_balance),border=True)
+        st.metric("💳 Net Balance", get_format_amount(default_currency,net_balance),border=True)
     with col4:
-        st.metric("📊 Daily Average", get_format_amount("VND", analyzer.get_daily_average()), border=True)
+        st.metric("📊 Daily Average", get_format_amount(default_currency, analyzer.get_daily_average()), border=True)
 
-def render_charts(analyzer_model: FinanceAnalyzer, visualizer_model: FinanceVisualizer, start_date, end_date):
+def render_charts(analyzer_model: FinanceAnalyzer, visualizer_model: FinanceVisualizer, start_date, end_date, currency):
     """Render the charts section with category and trend visualizations"""
     # Category chart
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("Category Spending")
+        # st.subheader("Category Spending")
         category_spending = analyzer_model.get_spending_by_category(start_date, end_date)
 
         if not category_spending.empty:
-            fig = visualizer_model.plot_category_spending(category_spending)
+            fig = visualizer_model.plot_category_spending(category_spending, currency)
             st.plotly_chart(fig, width='stretch')
         else:
             st.info("No expense data available for this period")
     
     with col2:
-        st.subheader("Category Breakdown")
+        # st.subheader("Category Breakdown")
         if not category_spending.empty:
             fig = visualizer_model.plot_pie_chart(category_spending)
             st.plotly_chart(fig, width='stretch')
         else:
             st.info("No expense data available for this period")
+        
+    st.markdown("""<hr style="margin: 10px 0; border: none; border-top: 1px solid #333; opacity: 0.3;">""", unsafe_allow_html=True)
 
     # Monthly trend
     st.subheader("Monthly Trend")
     monthly_trend = analyzer_model.get_monthly_trend(months=6)
     if not monthly_trend.empty:
-        fig = visualizer_model.plot_monthly_trend(monthly_trend)
+        fig = visualizer_model.plot_monthly_trend(monthly_trend, currency)
         st.plotly_chart(fig, width='stretch')
     else:
         st.info("No data available for monthly trend")
@@ -134,8 +122,11 @@ def render_dashboard(analyzer_model: FinanceAnalyzer, transaction_model:Transact
     transaction_model = models["transaction"]
     visualizer_model = models["visualizer"]
 
-    with stylable_container(key="menu_box", css_styles=container_page_css()):
-    
+    # Get default currency for user
+    default_currency = models["user"].get_default_currency(st.session_state.user_id)
+
+    with stylable_container(key="content_box", css_styles=container_page_css()):
+
         # Header
         cHeader, cFunc = st.columns([1, 2], vertical_alignment="center")
         with cHeader:
@@ -145,14 +136,21 @@ def render_dashboard(analyzer_model: FinanceAnalyzer, transaction_model:Transact
 
         # Line ngang sát menu
         st.markdown("""<hr style="margin: 10px 0; border: none; border-top: 2px solid #333; opacity: 0.3;">""", unsafe_allow_html=True)
+        
+        with stylable_container(key="main_box", css_styles=container_main_css()):
 
-        # Metric
-        date_range_option = st.session_state.dashboard_date_range
-        date_ranges = get_date_range_options() #> return dictionary
-        start_date, end_date = date_ranges[date_range_option]
-        render_metric(analyzer_model, start_date, end_date)
+            transaction_count = transaction_model.count_transaction_by_user(st.session_state.user_id)
+            if transaction_count == 0:
+                st.subheader("You have no transaction data yet. Please add some transactions to see the dashboard.")
+                st.stop()
 
-        st.markdown("""<hr style="margin: 10px 0; border: none; border-top: 2px solid #333; opacity: 0.3;">""", unsafe_allow_html=True)
+            # Metric
+            date_range_option = st.session_state.dashboard_date_range
+            date_ranges = get_date_range_options() #> return dictionary
+            start_date, end_date = date_ranges[date_range_option]
+            render_metric(analyzer_model, start_date, end_date)
 
-        # Charts
-        render_charts(analyzer_model, visualizer_model, start_date, end_date)
+            st.markdown("""<hr style="margin: 10px 0; border: none; border-top: 1px solid #333; opacity: 0.3;">""", unsafe_allow_html=True)
+
+            # Charts
+            render_charts(analyzer_model, visualizer_model, start_date, end_date, default_currency)

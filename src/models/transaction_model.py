@@ -1,6 +1,7 @@
 from core import config
 from core.database_manager import DatabaseManager
 from models.exchange_rate_model import ExchangeRateModel
+from models.user_model import UserModel
 from bson import ObjectId
 from typing import Optional, Any
 from datetime import datetime, date
@@ -101,32 +102,33 @@ class TransactionModel:
     # Hàm thêm transaction
     def add_transaction(
         self,
-        transaction_type: str,
+        type: str,
         category_id: ObjectId,
-        currencies: str,
+        currency: str,
         amount: float,
-        transaction_date: datetime,
+        date: datetime,
         description: str
     ) -> Optional[str]: # Inserted document ID as string, or None if failed
         """
         Add a new transaction with automatic last_modified timestamp.
         
         Args:
-            transaction_type: 'Expense' or 'Income'
-            category: Category name
+            type: 'Expense' or 'Income'
+            category_id: Category ID
+            currency: Transaction currency
             amount: Transaction amount
-            transaction_date: Transaction date
+            date: Transaction date
             description: Optional description
         """
-        if not isinstance(transaction_date, datetime): # Nếu transaction_date KHÔNG phải kiểu datetime
-            transaction_date = handler_datetime(transaction_date) # → thì convert nó thành datetime.
+        if not isinstance(date, datetime): # Nếu transaction_date KHÔNG phải kiểu datetime
+           date = handler_datetime(date) # → thì convert nó thành datetime.
 
         transaction = {
-            'type': transaction_type,
+            'type': type,
             'category_id': category_id,
-            'currency': currencies,
+            'currency': currency,
             'amount': amount,
-            'date': transaction_date,
+            'date': date,
             'description': description,
             'created_at': datetime.now(),
             'last_modified': datetime.now(),
@@ -135,7 +137,8 @@ class TransactionModel:
 
         try:
             result = self.collection.insert_one(transaction)
-            print("Added transaction successfully", transaction) # debug
+            print("Added transaction successfully", result.inserted_id) # debug
+            print(transaction)
             return str(result.inserted_id)
         except Exception as e:
             print(f"Error adding transaction: {e}")
@@ -159,6 +162,8 @@ class TransactionModel:
             filter_ = {'_id': ObjectId(transaction_id),
                        'user_id': self.user_id} # added user_id constraint
             result = self.collection.update_one(filter_, {'$set': kwargs})
+            print("Updated transaction successfully", transaction_id)
+            print(result)
             return result.modified_count > 0
         except Exception as e:
             print(f"Error updating transaction: {e}")
@@ -172,6 +177,7 @@ class TransactionModel:
             filter = {"_id": ObjectId(transaction_id), 'user_id': self.user_id} # added user_id constraint
             result = self.collection.delete_one(filter)
             print("Deleted transaction successfully", transaction_id)
+            print(result)
             return result.deleted_count > 0 # trả về số document đã xóa (0 hoặc 1) để check nút xóa có thành công không
         except Exception as e:
             print(f"Error deleting transaction: {e}")
@@ -218,18 +224,17 @@ class TransactionModel:
             }
         )
 
-    def get_balance_by_date(self, date: date) -> float:
+    def get_balance_by_date(self, user_id: ObjectId, date: date) -> float:
+
+        # Get target currency (default currency of user)
+        target_currency = UserModel().get_default_currency(user_id)
 
         # lấy list transaction theo ngày
-        transactions = list(self.get_transactions(advanced_filters={"start_date": date, "end_date": date}))
+        transactions = list(self.get_transactions(advanced_filters={"user_id": user_id, "start_date": date, "end_date": date}))
 
-         # Đổi tiền USD -> VND
+         # Exchange currency for transactions in date list
         for t in transactions:
-            amount = t["amount"]
-            currency = t["currency"]
-            if currency == "USD":
-                rate = ExchangeRateModel().get_rate("USD", "VND")
-                t["amount"] = amount * rate # gán ngược giá trị mới vào data
+            t["amount"] = ExchangeRateModel().convert_currency(t["amount"], from_currency=t["currency"], to_currency=target_currency)
 
         # phân ra 2 list: income, expense
         income = [t["amount"] for t in transactions if t["type"] == "Income"]
@@ -241,10 +246,8 @@ class TransactionModel:
             balance = sum(income) - sum(expense)
         return balance
     
-    # def count_transactions_by_id_category(self, category_id: ObjectId):
-    #     result = self.collection.find({"category_id": ObjectId(category_id)})
-    #     #print(len(list(result)))
-    #     return len(list(result))
+    def count_transaction_by_user(self, user_id: ObjectId) -> int:
+        return self.collection.count_documents({"user_id": user_id})
 
 '''
 if __name__== "__main__":
@@ -253,7 +256,6 @@ if __name__== "__main__":
     #category_name = category.get_category_name_by_id("692294bf7fb5925a5ef5963e")
     #transaction.count_transactions_by_cate_and_type("Game", "Expense")
     #transaction.count_transactions_by_id_category("692294bf7fb5925a5ef5963e")
-    #transaction.exchange_currency(40, current_currency="USD", target_currency="VND")
 
     # filter_data = {
     #             "type": "Income",
@@ -261,5 +263,7 @@ if __name__== "__main__":
     #         }
     # transaction.filter_transactions(filters=filter_data)
     #transaction.get_balance_by_date("2023-05-01")
-    transaction.get_transactions(advanced_filters={"start_date": datetime(2025,12,2), "end_date": datetime(2025,12,2)})
+    #transaction.get_transactions(advanced_filters={"start_date": datetime(2025,12,2), "end_date": datetime(2025,12,2)})
+    count_transaction_by_user = transaction.count_transaction_by_user("692dd7d3f9d1d3f57cd055aa")
+    print(count_transaction_by_user)
 #''' 

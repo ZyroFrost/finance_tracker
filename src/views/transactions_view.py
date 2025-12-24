@@ -1,10 +1,16 @@
-from utils import get_format_currency, get_format_amount, get_date_range_options, get_type_list, get_currencies_list, state_input, format_date
+from models.user_model import UserModel
+from models.category_model import CategoryModel
+from models.transaction_model import TransactionModel
+from analytics.analyzer import FinanceAnalyzer
+
+from utils import get_format_amount, get_format_currency, get_date_range_options, get_type_list, get_currencies_list, state_input, format_date
 from assets.styles import container_page_css, container_main_css, transaction_card_css
 from streamlit_extras.stylable_container import stylable_container # thư viện mở rộng của streamlit để add container với css
+from datetime import datetime
 import streamlit as st       
 
 # ======== DiALOGS =========
-def delete_transaction_dialog(transaction_model):
+def delete_transaction_dialog(transaction_model: TransactionModel):
     dialog_name = st.session_state.trans_confirm_delete # lấy name của transaction từ session state (phần nút xóa)
     trans_id = st.session_state.trans_confirm_delete_id # lấy id của transaction (dùng để đưa vào hàm khi confirm)
     print(dialog_name)
@@ -32,14 +38,15 @@ def delete_transaction_dialog(transaction_model):
                 st.session_state.delete_trans_failed = dialog_name
             st.rerun()     
     trans_dialog()
+# ======== END DiALOGS =========
 
 # ======== MAIN RENDER =========
-def render_trans_func_panel(category_model, transaction_model):
+def render_trans_func_panel(category_model: CategoryModel, transaction_model: TransactionModel):
 
     cAddTrans, cFilter = st.columns([1, 1])
     with cAddTrans:
         # Add new transaction
-        with st.popover("Add Transaction", icon="➕", use_container_width=True):
+        with st.popover("➕ Add Transaction", use_container_width=True):
 
             # Select type
             trans_type_add = st.selectbox("Select Type", get_type_list(), key="trans_type_add")
@@ -64,11 +71,6 @@ def render_trans_func_panel(category_model, transaction_model):
             # Date input, Vì json lưu dạng ngày + time, nhưng hàm date_input chỉ nhận ngày, nên phải thêm giờ tự động 0:00
             trans_date = st.date_input("Date", key="new_trans_date")
 
-            # Confirmation message
-            if st.session_state.get("transaction_added") == True:
-                st.success("Transaction added successfully!")
-                st.session_state["transaction_added"] = False
-
             # Button
             if st.button("✔️ Comfirm", use_container_width=True):
                 if not trans_date:
@@ -79,24 +81,28 @@ def render_trans_func_panel(category_model, transaction_model):
                     trans_description = "No description"
                 else:              
                     transaction_model.add_transaction(
-                        transaction_type=trans_type_add, 
+                        type=trans_type_add, 
                         category_id=trans_cate_id, 
-                        currencies=trans_currencies,
+                        currency=trans_currencies,
                         amount=trans_amount, 
-                        transaction_date=trans_date, 
+                        date=trans_date, 
                         description=trans_description
                     )
                     st.session_state["transaction_added"] = True
                     st.rerun()
 
+            # Confirmation message
+            if st.session_state.get("transaction_added") == True:
+                st.success("Transaction added successfully!")
+                st.session_state["transaction_added"] = False
+
     # Filter popover
     with cFilter:
         with st.popover("Filter", icon="🔎", use_container_width=True):    
-            # Select type
-            cate_type = st.selectbox("↔️ Transaction Type", get_type_list(), key="select_type2")
 
             # Select category
-            st.selectbox("📦 Category Name", category_model.get_category_name_by_type(st.session_state.select_type2), key="select_category2")
+            categories = category_model.get_categories()
+            st.selectbox("📦 Category Name", options=categories, format_func=lambda c: c["name"], key="select_category2")
             
             # Select date range
             date_option = get_date_range_options()
@@ -114,7 +120,6 @@ def render_trans_func_panel(category_model, transaction_model):
 
             # Data dict
             filter_data = {
-                "transaction_type": cate_type,
                 "category_id": st.session_state.get("select_category2"),
                 "date_range": st.session_state.get("date_range2"),
                 "currency": st.session_state.get("currency2"),
@@ -122,19 +127,70 @@ def render_trans_func_panel(category_model, transaction_model):
                 "max_amount": st.session_state.get("max_amount2"),
             }
 
+            bClear, bFilter = st.columns(2)
+
+            if bClear.button("❌ Clear Filter", use_container_width=True):
+                st.session_state.trans_filter_applied = False
+                st.session_state.trans_filter_data = {}
+                st.rerun()
+
             # Button filter
-            if st.button("🔎 Search", use_container_width=True):
-                filter = transaction_model.filter_transactions(filter_data)
-                if filter != []:
-                    render_trans_details(filter, st.session_state.select_type2)
-                else:
-                    st.error("No transactions found!")
+            if bFilter.button("🔎 Search", use_container_width=True):
+                normalized_filter = {}
+
+                # category
+                if filter_data["category_id"]:
+                    normalized_filter["category_id"] = filter_data["category_id"]["_id"]
+
+                # date range (🔥 QUAN TRỌNG)
+                date_ranges = get_date_range_options()
+                if filter_data["date_range"] in date_ranges:
+                    start_date, end_date = date_ranges[filter_data["date_range"]]
+                    normalized_filter["start_date"] = start_date
+                    normalized_filter["end_date"] = end_date
+
+                # currency (filter, NOT convert)
+                if filter_data["currency"]:
+                    normalized_filter["currency"] = filter_data["currency"]
+
+                # amount
+                if filter_data["min_amount"] > 0:
+                    normalized_filter["min_amount"] = filter_data["min_amount"]
+
+                if filter_data["max_amount"] > 0:
+                    normalized_filter["max_amount"] = filter_data["max_amount"]
+
+                # save state
+                st.session_state.trans_filter_applied = True
+                st.session_state.trans_filter_data = normalized_filter
 
 # Render transaction details
-def render_trans_details(category_model, transaction_model, category_type):
+def render_trans_details(user_model: UserModel, category_model: CategoryModel, transaction_model: TransactionModel, analyzer_model: FinanceAnalyzer, category_type):
+    # ---- GET FILTER DATA ----
+    filters = {}
+
+    # Apply filter from Search
+    if st.session_state.get("trans_filter_applied"):
+        filters.update(st.session_state.get("trans_filter_data", {}))
+
+    # Apply type from tab
+    if category_type != "All":
+        filters["type"] = category_type
+
+
     with stylable_container(key=category_type, css_styles=container_main_css()):
+
+        # Repare filter
+        filters = {}
+        if st.session_state.get("trans_filter_applied"):
+            filters.update(st.session_state.get("trans_filter_data", {}))
+
+        if category_type != "All":
+            filters["type"] = category_type
         
-        all_trans = list(transaction_model.get_transactions())
+        # Get transactions
+        all_trans = analyzer_model.get_filtered_transactions(filters)
+        default_currency = user_model.get_default_currency(st.session_state.user_id)
 
         # Variable, cái này test tối ưu, lấy all trans (cached) 1 lần để khỏi gọi lên DB nhiều lần, chưa xử lý xuông dưới
         if category_type == "All":
@@ -146,11 +202,33 @@ def render_trans_details(category_model, transaction_model, category_type):
         dates = list(sorted({t["date"] for t in trans_list_by_type}, reverse=True))
 
         if all_trans:
-            st.write(f"{category_type} Transactions — Total: {len(trans_list_by_type)}")
-            st.write("")
+            if "expand_all" not in st.session_state:
+                st.session_state.expand_all = False
+            
+            def set_expand_all(value: bool):
+                st.session_state.expand_all = value
+
+            cTotal, cExpanderOpen, cExpanderClose = st.columns([7, 1, 1])
+            with cTotal:
+                st.write(f"{category_type} Transactions — Total: {len(trans_list_by_type)}")
+                st.write("")
+
+            # Expander open
+            with cExpanderOpen:
+                st.button("Expand All", width="stretch", key=f"{category_type}_expand_all", on_click=set_expand_all, args=(True,))
+
+            with cExpanderClose:
+                st.button("Collapse All", width="stretch", key=f"{category_type}_collapse_all", on_click=set_expand_all, args=(False,))
 
             # for loop by dates
             for d in dates:
+                
+                dates = sorted({t["date"] for t in trans_list_by_type}, reverse=True)
+                #
+                trans_by_date_and_type = [
+                    t for t in trans_list_by_type
+                    if t["date"] == d
+                ]
                     
                 # Xử lý nếu chọn All, thì list trans lấy tất cả (hàm riêng), còn ko thì lấy list lọc theo ngày và type
                 if category_type == "All":
@@ -159,32 +237,37 @@ def render_trans_details(category_model, transaction_model, category_type):
                     trans_by_date_and_type = list(transaction_model.get_transactions(advanced_filters={"start_date": d, "end_date": d, "type": category_type}))
 
                 # Get balance and format
-                balance = transaction_model.get_balance_by_date(d)
-                balance = get_format_amount("VND", balance)
+                balance = transaction_model.get_balance_by_date(user_id=st.session_state.user_id, date=d)
+                balance_abs = get_format_amount(default_currency, abs(balance))
 
+                # Display balance (add + or -)
+                if balance < 0:
+                    display_balance = f"- {balance_abs}"
+                elif balance > 0:
+                    display_balance = f"+ {balance_abs}"
+                else:
+                    display_balance = balance_abs
+                
                 # format date in expander Date
-                formatted_date = format_date(d)
+                formatted_date = format_date(d) # format date for view
                 format_count = len(trans_by_date_and_type)
 
                 # render date and balance
-                with st.expander(f"{formatted_date} — {format_count} transactions — Balance: {balance}", expanded=False):             
+                with st.expander(f"{formatted_date} — {format_count} transactions — Balance: {display_balance}", expanded=st.session_state.expand_all):             
 
                     # Transactions in dates
-                    for idi, item in enumerate(trans_by_date_and_type):     
+                    for idi, item in enumerate(trans_by_date_and_type): 
 
                         # custom items, đặt ở ngoài để dùng chung
                         type = item.get('type')
                         category_name = category_model.get_category_name_by_id(item.get('category_id')) # dò category name theo category id
                         description = item.get('description')
                         
-                        # Format amount+currency
-                        amount = item.get('amount')
-                        if item.get('currency') == "VND": # if currency is VND                          
-                            amount_format = f"{format(amount, ',.0f').replace(",", ".")} {item.get('currency')}"
-                        else:
-                            exchange = transaction_model.exchange_currency(amount, item.get('currency'), "VND")
-                            exchange = format(exchange, ',.0f').replace(",", ".")
-                            amount_format = f"{format(amount, ',.2f').replace(",", ".")} {item.get('currency')} ({exchange} VND)"                                                                          
+                        # Convert currency then format
+                        amount_format = analyzer_model.format_amounth_currency_for_user(item.get('amount'), item.get('currency'))
+
+                        # Icon
+                        icon = category_model.get_category_by_id(item.get('category_id')).get('icon')
 
                         # Date
                         created_at = item.get('created_at').strftime('%d-%m-%Y')
@@ -199,6 +282,7 @@ def render_trans_details(category_model, transaction_model, category_type):
                                     category=category_name,
                                     amount_currency=amount_format,
                                     description=description,
+                                    icon=icon,
                                     created=created_at,
                                     modified=last_modified
                                 )
@@ -213,9 +297,10 @@ def render_trans_details(category_model, transaction_model, category_type):
                                         key_cate = f"edit_cate_{category_type}_{item['_id']}" 
                                         key_description = f"edit_description_{category_type}_{item['_id']}"
                                         key_currency = f"edit_currency_{category_type}_{item['_id']}"       
-                                        key_amount = f"edit_amount_{category_type}_{item['_id']}"                                         
+                                        key_amount = f"edit_amount_{category_type}_{item['_id']}"
+                                        key_date = f"edit_date_{category_type}_{item['_id']}"                                         
 
-                                        col1, col2 = st.columns([1,1]) # chia 2 cột để ko bị dài quá
+                                        col1, col2 = st.columns([1,1])
                                         with col1:
 
                                             # Set default type by current item's type                            
@@ -253,11 +338,16 @@ def render_trans_details(category_model, transaction_model, category_type):
                                                                         current_data=item["currency"], 
                                                                         widget=st.selectbox, 
                                                                         key=key_currency, 
-                                                                        options=get_currencies_list())                                                                                                                                                  
+                                                                        options=get_currencies_list())          
+
+                                            # Set default date by current item's date
+                                            st.date_input("Change date", item["date"], key=key_date)        
+                                            change_date = datetime.combine(st.session_state[key_date], datetime.min.time())                                                                                                                            
 
                                             # Update transaction
                                             if st.button("✅ Save", key=f"edit_button_{category_type}_{item['_id']}", use_container_width=True):
-                                                if change_description == item['description'] and change_amount == item['amount'] and change_cate_id == item['category_id'] and change_currency == item['currency'] and change_type == item['type']:
+                                                if change_description == item['description'] and change_amount == item['amount'] and change_cate_id == item['category_id'] \
+                                                and change_currency == item['currency'] and change_type == item['type'] and change_date == item['date']:
                                                     st.error("No changes were made.")
                                                 else:
                                                     transaction_model.update_transaction(
@@ -265,21 +355,24 @@ def render_trans_details(category_model, transaction_model, category_type):
                                                         type=change_type, 
                                                         category_id=change_cate_id, 
                                                         description=change_description, 
-                                                        currencies=change_currency, 
-                                                        amount=change_amount)
+                                                        currency=change_currency, 
+                                                        amount=change_amount,
+                                                        date=change_date
+                                                    )
                                                     st.session_state[f"edit_trans_success_{category_type}_{item['_id']}"] = True 
                                                     st.rerun()
-
-                                            # thông báo sau khi save
-                                            if st.session_state.get(f"edit_trans_success_{category_type}_{item['_id']}"): # nhận state edit thành công
-                                                st.success(f"Transaction '{item['description']}' updated successfully!")
-                                                st.session_state[f"edit_trans_success_{category_type}_{item['_id']}"] = False # reset state
 
                                         with cDelete:
                                             if st.button("🗑️", key=f"delete_trans_{category_type}_{item['_id']}"):                        
                                                 st.session_state.trans_confirm_delete = item['description']
                                                 st.session_state.trans_confirm_delete_id = item['_id']
                                                 st.rerun()
+
+                                        # Message after update
+                                        if st.session_state.get(f"edit_trans_success_{category_type}_{item['_id']}"): # nhận state edit thành công
+                                            st.success(f"Transaction '{item['description']}' updated successfully!")
+                                            st.session_state[f"edit_trans_success_{category_type}_{item['_id']}"] = False # reset state
+
                         # HORIZONTAL LINE
                         if idi < len(trans_by_date_and_type) - 1: # ko in dòng cuối                   
                             st.markdown("""<hr style="margin: 0px 0; border: none; border-top: 1px solid #333; opacity: 0.3;">""", unsafe_allow_html=True)                                      
@@ -287,8 +380,9 @@ def render_trans_details(category_model, transaction_model, category_type):
             st.subheader("No transactions found.")
 
 # Main Render, call all render
-def render_transactions():
+def render_transactions(analyzer_model: FinanceAnalyzer):
     models = st.session_state["models"]
+    user_model = models["user"]
     category_model = models["category"]
     transaction_model = models["transaction"]
 
@@ -314,7 +408,7 @@ def render_transactions():
         # Render tất cả tabs nhưng chỉ show nội dung của tab active
         for (tab, tab_name) in zip(tabs, tab_names): # zip use to combine list, tuple,...
             with tab:
-                render_trans_details(category_model, transaction_model, category_type=tab_name)
+                render_trans_details(user_model, category_model, transaction_model, analyzer_model, category_type=tab_name)
 
         # Dialog
         render_trans_dialog(transaction_model)

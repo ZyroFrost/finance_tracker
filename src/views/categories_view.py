@@ -1,8 +1,8 @@
+from models.category_model import CategoryModel
 from utils import is_default_category, get_type_list
 from assets.styles import container_page_css, container_main_css, container_detail_category_css
 
 from streamlit_extras.stylable_container import stylable_container # thư viện mở rộng của streamlit để add container với css
-from datetime import datetime
 import streamlit as st
 
 # ======== DiALOGS =========
@@ -46,36 +46,54 @@ def delete_category_dialog(category_model, transaction_model):
 
 # ======== MAIN RENDER =========
 
+CATEGORY_ICON_OPTIONS = [
+    "🛍️","🛒","🧾","🎁","👕","👟","💄","📡",
+    "🍔","🍕","🍜","🍣","🍱","🥗","☕","🍺",
+    "🚗","🚌","🚕","🚇","✈️","⛽","🛵",
+    "🎮","🎬","🎵","🎧","🎤","🎲","🎯",
+    "💊","🏥","🩺","🦷","🧘","💉",
+    "📚","🎓","✏️","📝","💻","🌍",
+    "💰","💵","💳","🏦","📈","🪙",
+    "🏠","🏡","🛏️","🛁","💡","💧",
+    "🏷️","📁","📂","📦","🧾","💼"
+]
+
 # Render category function panel
-def render_category_func_panel(category_model):
+def render_category_func_panel(category_model: CategoryModel):
     _, cAdd_Category = st.columns([1, 1])
     # Add new category
     with cAdd_Category:
         with st.popover("➕ Add New Category", use_container_width=True):
-            if st.session_state.get("category_added"):
-                st.success("Category added successfully!")
-                st.session_state["category_added"] = False                 # reset flag để không hiện lại lần sau
-
+            
+            # Input fields
             type = st.selectbox("Select Type", get_type_list(), key="select_type_add_cate")      
             cate_list = category_model.get_category_by_type(type)
-            existing_names = {c["name"] for c in cate_list}      
 
+            existing_names = {c["name"] for c in cate_list}
             name = st.text_input("Category Name")
+
+            icon = st.selectbox("Select Icon", CATEGORY_ICON_OPTIONS, key="select_icon_add_cate")
+
             if st.button("Confirm", icon="✅", key="add_category", use_container_width=True):
                 if not name or name.strip() == "":
                     st.error("Category name is required!")
                 elif name in existing_names:
                     st.error("Category name already exists!")
                 else:
-                    category_model.upsert_category(type, name)
+                    category_model.save_category(None, type, name, icon) # None = create new category
                     st.session_state["category_added"] = True # set flag thông báo đã thêm (rồi thông báo bên ngoài sau khi đã refresh)
                     st.rerun()
 
+            # Success message
+            if st.session_state.get("category_added"):
+                st.success("Category added successfully!")
+                st.session_state["category_added"] = False # reset flag để không hiện lại lần sau
+
 # Render category list
-def render_category_list(category_model, category_type: str):
+def render_category_list(category_model: CategoryModel, category_type: str):
     
     with stylable_container(key=f"{category_type}", css_styles=container_main_css()):
-        cate_list = category_model.get_category_by_type(category_type) # cái này trả về dict full field
+        cate_list = category_model.get_category_by_type(category_type) # cái này trả về dict full fields
 
         if cate_list: # Check list is not empty
             st.write(f"Total: {len(cate_list)} categories")
@@ -94,7 +112,7 @@ def render_category_list(category_model, category_type: str):
                         with cContent:
                             cleft, cright = st.columns([1, 1])
                             with cleft:
-                                st.write(f"📌 {item.get("name")}")         
+                                st.write(f"{item.get('icon')} {item.get("name")}")         
                                 st.caption(f"Type: {item.get('type')}")
                             with cright:
                                 st.write(f"Created at: {item.get("created_at").strftime("%d-%m-%Y")}")
@@ -116,39 +134,41 @@ def render_category_list(category_model, category_type: str):
                                             
                                         # Set default name by current item's name
                                         key_new_name = f"new_name_{item['_id']}" 
-                                        edit_name = st.text_input("Change category name", item.get("name"), key=key_new_name)                                 
+                                        edit_name = st.text_input("Change category name", item.get("name"), key=key_new_name)      
+
+                                        # Set default icon by current item's icon
+                                        key_new_icon = f"new_icon_{item['_id']}"
+                                        current_icon = item.get("icon", "🏷️")
+                                        icon_index = CATEGORY_ICON_OPTIONS.index(current_icon) if current_icon in CATEGORY_ICON_OPTIONS else 0
+                                        edit_icon = st.selectbox("Change icon", CATEGORY_ICON_OPTIONS, index=icon_index, key=key_new_icon)                      
                                         
                                         # lưu tên cũ để hiện thông báo
                                         key_old_name = f"old_name_{item['_id']}"      
                                         old_name = item.get("name")                                           
                                         if key_old_name not in st.session_state:
                                             st.session_state[key_old_name] = old_name
-
-                                        # Message after update                     
-                                        if st.session_state.get(f"edit_cate_success_{item['_id']}") == True: # Set thêm key cho vòng lặp
-                                            st.success(f"Category '{st.session_state[key_old_name]}' updated to '{edit_name}' successfully!")
-                                            st.session_state[f"edit_cate_success_{item['_id']}"] = False # Reset session state  
-
-                                        # Set input data
-                                        cate_data = {
-                                            "type": edit_type,
-                                            "name": edit_name,
-                                            "last_modified": datetime.now()}
                                         
-                                        # Cancel and save button
-                                        _, cSave = st.columns([1,1]) # đẩy nút save qua bên phải                 
-                                        if cSave.button("✅ Save", use_container_width=True, key=f"save_{item['_id']}"):
+                                        # Cancel and save button                                               
+                                        if st.button("✅ Save", use_container_width=True, key=f"save_{item['_id']}"):
 
                                             # Kiểm tra tên chưa nhập mới và có tồn tại trong cate ko
-                                            existing_names = {c["name"] for c in cate_list}
-                                            if edit_name == item["name"]:
+                                            existing_names = {c["name"] for c in cate_list if c["_id"] != item["_id"]} 
+                                            # if for check duplicate category name within the same type, excluding the category currently being edited
+                                            # for example: category name "Transportation" can exist in both "Expense" and "Income" type, but cannot appear twice in the same type
+
+                                            if edit_name == item["name"] and edit_type == item["type"] and edit_icon == item["icon"]:
                                                 st.error("Category name not changed!")
                                             elif edit_name in existing_names:
                                                 st.error("Category name already exists")
                                             else:                                    
-                                                category_model.update_category(item['_id'], cate_data)
+                                                category_model.save_category(item['_id'], edit_type, edit_name, edit_icon)
                                                 st.session_state[f"edit_cate_success_{item['_id']}"] = True         
-                                                st.rerun()                                                                                             
+                                                st.rerun()
+
+                                        # Message after update                     
+                                        if st.session_state.get(f"edit_cate_success_{item['_id']}") == True: # Set thêm key cho vòng lặp
+                                            st.success(f"Category '{st.session_state[key_old_name]}' updated to '{edit_name}' successfully!")
+                                            st.session_state[f"edit_cate_success_{item['_id']}"] = False # Reset session state                                                                                              
                                 else:
                                     st.popover("✏️", disabled=True) # Disable default
                 
@@ -170,7 +190,7 @@ def render_categories():
     category_model = models["category"]
     transaction_model = models["transaction"]
     
-    with stylable_container(key="menu_box", css_styles=container_page_css()):
+    with stylable_container(key="category_page_box", css_styles=container_page_css()):
 
         # Header
         cHeader, cFunc = st.columns([1, 2], vertical_alignment="center")

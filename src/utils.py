@@ -6,29 +6,46 @@ import streamlit as st
 # Hàm định dạng số thành dạng tiền tệ
 def get_format_amount(currency: str, amount: float):
     """Format number as currency""" 
-    symbol = config.CURRENCIES[currency]
-    if currency == "VND":
-        return f"{amount:,} {symbol}"
+    currency_info = config.CURRENCIES[currency]
+    symbol = currency_info["symbol"]
+    decimals = currency_info["decimal_places"]
+    position = currency_info["symbol_position"]
+    thousand_sep = currency_info["separator_thousand"]
+    decimal_sep = currency_info["separator_decimal"]
+
+    # Format number
+    if decimals == 0:
+        format_number = f"{int(amount):,}"
     else:
-        return f"{amount:,.2f} {symbol}"
+        format_number = f"{amount:,.{decimals}f}"
+
+    # Replace decimal separator and thousand separator
+    sep_format_number = format_number.replace(",", "X").replace(".", decimal_sep).replace("X", thousand_sep)
+    
+    # Set symbol position
+    if position == "prefix":
+        return f"{symbol}{sep_format_number}"
+    elif position == "suffix":
+        return f"{sep_format_number}{symbol}"
 
 # Hàm định dạng số tiền theo loại tiền tệ, trả về chuỗi định dạng, step và min_value
-def get_format_currency(currencies: str) -> tuple[float | int, str, float | int]:
-    if currencies == "VND":
-        currencies_step = 500
-        currencies_format = "%d"
-        min_value = 0
-    elif currencies == "USD":
-        currencies_step = 0.1
-        currencies_format = "%.2f"
-        min_value = 0.00
-    return currencies_step, currencies_format, min_value
+def get_format_currency(currency: str) -> tuple[float | int, str, float | int]:
+    info = config.CURRENCIES[currency]
+    if not info:
+        raise ValueError(f"Unsupported currency: {currency}")
+
+    return info["step"], info["format"], info["min_value"]
 
 # Hàm lấy các tùy chọn khoảng ngày cho filter
+
+def get_month_name(month: int) -> str:
+    return date(2024, month, 1).strftime("%B")
+
 def get_date_range_options():
     """Get predefined date range options"""
     now = datetime.now()
     today = datetime.now().date()
+    min_date = date(2020, 1, 1)
     
     # cấu trúc của dictionary: "Option Name": (start_date, end_date)
     return {
@@ -41,7 +58,7 @@ def get_date_range_options():
         "Last 3 Months": (today - timedelta(days=90), today),
         "Last 6 Months": (today - timedelta(days=180), today),
         "This Year": (today.replace(month=1, day=1), today),
-        "All Time": (None, None)
+        "All Time": (min_date, now)
     }
 
 # Hàm lấy toàn bộ tháng trước

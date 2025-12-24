@@ -43,16 +43,16 @@ def container_page_css():
             padding: 15px 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             min-height: 80vh !important;
-            align-items: center; /* Canh giữa dọc */
+            align-items: left; /* Canh giữa dọc */
         }
     """
     return page
 
 def container_main_css():
     body_style = """
-        {
-            min-height: 60vh !important;
-            max-height: 60vh !important;
+        {   
+            min-height: 69vh !important;
+            max-height: 69vh !important;
             overflow-y: auto; /* Nếu nội dung dài thì cuộn bên trong khung */
         }
     """
@@ -73,6 +73,20 @@ def container_detail_category_css():
     """
     return detail_style 
 
+# def container_detail_budget_css():
+#     detail_style = """
+#         {
+#             background-color: #EEEEEE;
+#             border-radius: 10px;
+#             border: 1px solid gray;
+#             padding: 22px;
+#             box-shadow: 0 0 8px rgba(0,0,0,0.2);
+#             /* min-height: 12.5vh !important; */
+#             /* max-height: 12.5vh !important; */
+#         }
+#     """
+#     return detail_style 
+
 def option_menu_css():
     # Tùy chỉnh cho option_menu
     {"container": {"padding": "5 !important", "background-color": "#FFFFFF", "border-radius": "15px"},}
@@ -92,7 +106,7 @@ def google_icon_css():
     """, unsafe_allow_html=True)
 
 # hàm tạo cấu trúc card transaction
-def transaction_card_css(type, category, amount_currency, description, created, modified):
+def transaction_card_css(type: str, category: str, amount_currency: str, description: str, icon: str , created, modified):
     arrow = "+" if type == "Income" else "-"
     color = "#1caa57" if type == "Income" else "#e74c3c"
 
@@ -107,16 +121,17 @@ def transaction_card_css(type, category, amount_currency, description, created, 
     ">
         <div style="display:flex; width:100%;"> <!-- width 100% để full khung ko bị lệch-->
             <!-- LEFT COLUMN -->
-            <div style="flex: 1;"> <!-- flex = phân bổ chiều rộng của cột, tương tự st.columns([1,1])-->
+            <div style="flex: 0.5;"> <!-- flex = phân bổ chiều rộng của cột, tương tự st.columns([1,1])-->
                 <div style="font-size:14px;color:#555;"><strong>{description}</strong></div>
-                <div style="font-size:14px;color:#555;">Category: {category}</div>
+                <!-- <span style="font-size:14px;color:#555;">Category: </span> -->
+                <span style="font-size:14px;color:#555;">{icon} {category}  </span>
             </div>
             <!-- MIDDLE COLUMN -->
             <div style="flex: 1; text-align:left;">
                 <div style="font-size:28px;color:{color};font-weight:700;">{arrow} {amount_currency}</div>
             </div>
             <!-- RIGHT COLUMN -->
-            <div style="flex: 1; text-align:right;">
+            <div style="flex: 0.5; text-align:right;">
                 <div style="font-size:14px;color:#555;">Created: {created}</div>
                 <div style="font-size:14px;color:#555;">Last modified: {modified}</div>
             </div>
@@ -124,82 +139,10 @@ def transaction_card_css(type, category, amount_currency, description, created, 
     </div>
     """, unsafe_allow_html=True)
 
-def transaction_expander_css_full(date, total, balance):
-    st.markdown(f"""
-    <style>
-
-    /* Container */
-    .custom-expander {{
-    margin: 8px 0;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    overflow: hidden;
-    font-family: "Segoe UI", sans-serif;
-    }}
-
-    /* Summary (header) */
-    .custom-expander summary {{
-    background: #f6f6f6;
-    padding: 10px 14px;
-    cursor: pointer;
-    list-style: none;
-    font-weight: 600;
-    font-size: 15px;
-    display: flex;
-    align-items: center;
-    border-bottom: 1px solid #ddd;
-    transition: background 0.2s;
-    }}
-
-    /* Arrow */
-    .custom-expander summary::marker {{
-    display:none;
-    }}
-    .custom-expander summary::after {{
-    content: "▾";
-    margin-left: auto;
-    transition: transform 0.25s;
-    color: #888;
-    }}
-
-    .custom-expander[open] summary {{
-    background: #e6e6e6;
-    }}
-    .custom-expander[open] summary::after {{
-    transform: rotate(-180deg);
-    }}
-
-    /* Inside content */
-    .custom-expander > div {{
-    background: #ffffff;
-    padding: 12px 14px;
-    font-size: 14px;
-    color: #333;
-    }}
-
-    /* Title styles inside summary */
-    span.exp-date    {{ color: #666; font-weight: 500; }}
-    span.exp-cat     {{ color: #1f77d0; }}
-    span.exp-amount  {{ color: #d9534f; font-weight: 700; }}
-
-    </style>
-
-    <details class="custom-expander">
-    <summary>
-        <span class="exp-date">{date}</span> |
-        <span class="exp-cat">{total}</span> |
-        <span class="exp-amount">{balance}</span>
-    </summary>
-
-    <!-- Nội dung bỏ trống -->
-    <div></div>
-    </details>
-    """, unsafe_allow_html=True)
-
 def transaction_expander_css():
     # background color
-    color_when_close = "#e6dcb3"
-    color_when_open = "#e0c079"
+    color_when_close = "#b9b9b9"
+    color_when_open = "#CAC4B4"
     color_background = "#ffffff"
 
     # text color
@@ -227,3 +170,54 @@ def transaction_expander_css():
     </style>
     """
     st.html(css)
+
+# hàm đổi màu progress bar theo ratio, ko dùng dc vì hàm st.progress() ko nhận màu riêng lẻ từng processbar được, chỉ đổi dc màu cục bộ
+# def get_progress_css(percent: float) -> str:
+#     if percent < 0.7:
+#         color = "#2ecc71"   # xanh
+#     elif percent < 1.0:
+#         color = "#f39c12"   # cam
+#     else:
+#         color = "#e74c3c"   # đỏ
+
+#     return f"""
+#     <style>
+#     .stProgress > div > div > div > div {{
+#         background-color: {color};
+#     }}
+#     </style>
+#     """
+
+# progress bar tạo bằng html css
+def render_budget_progress(percent: float):
+    if percent < 0.7:
+        color = "#2ecc71"
+    elif percent < 1.0:
+        color = "#f39c12"
+    elif percent == 1.0:
+        color = "#f39c12"
+    else:
+        color = "#e74c3c"
+
+    width = min(percent * 100, 100)
+
+    st.markdown(
+        f"""
+        <div style="
+            width: 100%;
+            height: 0.5rem;
+            background: #eee;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 6px 0;
+        ">
+            <div style="
+                width: {width}%;
+                height: 100%;
+                background: {color};
+                transition: width 0.3s ease;
+            "></div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )

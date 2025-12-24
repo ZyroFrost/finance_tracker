@@ -1,3 +1,6 @@
+# ExchangeRateModel chỉ phụ trách chuyển đôi giá trị tiền tệ và cập nhập giá trị tiền tệ mới nhất sau mỗi 24h
+# Các hàm tính toán ở đây được gọi qua analyzer để xử lý tiếp, ko gọi trực tiếp từ Model này
+
 from datetime import datetime, timedelta
 from core.database_manager import DatabaseManager
 from core import config
@@ -65,6 +68,20 @@ class ExchangeRateModel:
             print(f"Error when exchange currency: {e}")
             result = None
         return result["conversion_rates"]
+    
+    def convert_currency(self, amount: float, from_currency: str, to_currency: str) -> float:
+        if from_currency == to_currency:
+            return amount
+
+        rate = self.get_rate(from_currency, to_currency)
+
+        # case rate is a dict vs float
+        if isinstance(rate, dict):
+            rate_value = rate[to_currency]
+        else:
+            rate_value = rate
+
+        return amount * rate_value
     
 '''
 if __name__ == "__main__":
