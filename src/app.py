@@ -1,6 +1,5 @@
 import streamlit as st
 import io, base64, time # chuyển đổi Image to base64 bỏ vào Icon button
-import requests
 from PIL import Image # đọc image từa folder assets
 from streamlit_option_menu import option_menu # thư viện mở rộng của streamlit để add icon với css
 
@@ -17,38 +16,6 @@ from views.categories_view import render_categories
 from views.transactions_view import render_transactions
 from views.settings_view import render_settings
 from views.budgets_view import render_budgets
-
-# =========================
-# OAUTH HELPERS
-# =========================
-def exchange_code_for_token(code: str) -> dict:
-    token_url = "https://oauth2.googleapis.com/token"
-
-    data = {
-        "code": code,
-        "client_id": st.secrets["auth"]["client_id"],
-        "client_secret": st.secrets["auth"]["client_secret"],
-        "redirect_uri": st.secrets["auth"]["redirect_uri"],
-        "grant_type": "authorization_code",
-    }
-
-    resp = requests.post(token_url, data=data, timeout=10)
-    resp.raise_for_status()
-    return resp.json()
-
-
-def get_user_info(token: dict) -> dict:
-    headers = {
-        "Authorization": f"Bearer {token['access_token']}"
-    }
-
-    resp = requests.get(
-        "https://www.googleapis.com/oauth2/v2/userinfo",
-        headers=headers,
-        timeout=10
-    )
-    resp.raise_for_status()
-    return resp.json()
 
 # ======== CONFIG =========
 @st.cache_resource 
@@ -83,7 +50,7 @@ transaction_expander_css() # phải dùng cục bộ 1 lần, ko dùng bên view
 
 # ========= DIALOGS & USER =========
 # Login screen
-@st.dialog(" ", dismissible=False, width = "small") # dismissible=False ẩn nút x đóng dialog
+#@st.dialog(" ", dismissible=False, width = "small") # dismissible=False ẩn nút x đóng dialog
 def login_screen():
     img = Image.open("src/assets/google_logo.png")
     buf = io.BytesIO()
@@ -199,48 +166,3 @@ elif st.session_state['current_page'] == "Settings":
     render_settings()
 elif st.session_state['current_page'] == "Log out":
     st.logout()
-
-DEBUG_AUTH = False
-
-if DEBUG_AUTH:
-    st.write("QUERY:", dict(st.query_params))
-    st.write("SESSION:", st.session_state)
-
-    if "authenticated" not in st.session_state:
-        st.session_state["authenticated"] = False
-
-    st.write("AUTH FLAG:", st.session_state["authenticated"])
-
-    if not st.session_state["authenticated"]:
-        st.write("➡️ NOT AUTHENTICATED")
-
-        if "code" in st.query_params:
-            st.write("✅ CODE RECEIVED")
-
-            code = st.query_params["code"]
-
-            try:
-                token = exchange_code_for_token(code)
-                st.write("✅ TOKEN OK:", token is not None)
-            except Exception as e:
-                st.error(f"❌ TOKEN ERROR: {e}")
-                st.stop()
-
-            try:
-                user_info = get_user_info(token)
-                st.write("✅ USER INFO:", user_info)
-            except Exception as e:
-                st.error(f"❌ USER INFO ERROR: {e}")
-                st.stop()
-
-            st.session_state["authenticated"] = True
-            st.session_state["user"] = user_info
-
-            st.write("🎉 AUTH SUCCESS")
-
-            st.query_params.clear()
-            st.rerun()
-
-        else:
-            st.warning("❌ NO CODE → SHOW LOGIN")
-            st.stop()
