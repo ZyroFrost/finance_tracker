@@ -84,7 +84,7 @@ def login_screen():
     col1, col2 = st.columns([1, 3])
     with col1.container(horizontal_alignment="center"):
         st.image("src/assets/logo.png", width=300)
-        st.markdown("<3 style='text-align: center;'>Login to your account</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center;'>Login to your account</h3>", unsafe_allow_html=True)
         if st.button(f'![icon](data:image/png;base64,{btn_b64})  Log in with Google', use_container_width=True):
             st.login()
     with col2.container(horizontal_alignment="center"):
@@ -95,14 +95,14 @@ def login_screen():
 #     login_screen()
 #     st.stop() # do not render while not logged in
 
-if not st.user.is_logged_in:
-    # cho Streamlit 1 rerun để cập nhật user
-    if "login_retry" not in st.session_state:
-        st.session_state["login_retry"] = True
-        st.rerun()
+# if not st.user.is_logged_in:
+#     # cho Streamlit 1 rerun để cập nhật user
+#     if "login_retry" not in st.session_state:
+#         st.session_state["login_retry"] = True
+#         st.rerun()
 
-    login_screen()
-    st.stop()
+#     login_screen()
+#     st.stop()
 
 # After login, check user in database
 user_model: UserModel = models['user']
