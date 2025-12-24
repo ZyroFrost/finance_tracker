@@ -81,12 +81,11 @@ def login_screen():
 
     # load css cho icon
     google_icon_css()
-    col1, col2 = st.columns([2, 1])
+    col1, col2 = st.columns([1, 4])
     with col1.container(horizontal_alignment="center"):
         st.image("src/assets/logo.png", width=300)
         st.markdown("<h2 style='text-align: center;'>Login to your account</h2>", unsafe_allow_html=True)
-        if st.button(f'![icon](data:image/png;base64,{btn_b64})  Log in with Google', on_click=st.login, use_container_width=True):
-            st.login()
+        st.button(f'![icon](data:image/png;base64,{btn_b64})  Log in with Google', on_click=st.login, use_container_width=True)
     with col2.container(horizontal_alignment="center"):
         st.image("src/assets/google_logo.png", width=50)
 
