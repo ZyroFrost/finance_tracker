@@ -28,20 +28,28 @@ class FinanceVisualizer:
             title='Spending by Category',
             #labels={'Total': 'Amount', 'Category': 'Category'},
             color='Category',
-            # color_discrete_sequence=px.colors.qualitative.Set2,
-            color_discrete_sequence=px.colors.sequential.Plasma
+            #color_discrete_sequence=px.colors.qualitative.Set2,
+            color_discrete_sequence=px.colors.qualitative.Pastel1,
+            #color_discrete_sequence=px.colors.qualitative.G10,
+            # color_discrete_sequence=px.colors.sequential.Plasma   
         )
         
         fig.update_traces(
             #texttemplate='%{text}',       # format tiền (ko dùng vì phải lấy format chuẩn từ utils.py)
-            textposition='outside'         # hiện trên đầu cột
+            textposition='outside',         # hiện trên đầu cột
+            hovertemplate="<b>%{x}</b><br>%{text}<extra></extra>"
+        )
+
+        fig.update_yaxes(
+            tickformat=",",          # 2,800,000
+            exponentformat="none"    # ❌ M, K
         )
         
         fig.update_layout(
             xaxis_title="Category",
             xaxis_tickangle=-45,
             height=500,
-            yaxis_tickformat='$,.0f',       # format trục Y
+            # yaxis_tickformat='$,.0f',       # format trục Y
             uniformtext_minsize=10,
             uniformtext_mode='hide'
         )
@@ -60,7 +68,9 @@ class FinanceVisualizer:
             title='Expense Distribution by Category',
             color='Category',
             #color_discrete_sequence=px.colors.qualitative.Set2,
-            color_discrete_sequence=px.colors.sequential.Plasma,
+            color_discrete_sequence=px.colors.qualitative.Pastel1,
+            #color_discrete_sequence=px.colors.qualitative.G10,
+            #color_discrete_sequence=px.colors.sequential.Plasma,
             hole=0.4)
         
         fig.update_traces(textposition='inside', textinfo='percent+label')

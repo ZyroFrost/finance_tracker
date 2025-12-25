@@ -34,6 +34,42 @@ def set_global_css():
         </style>
     """, unsafe_allow_html=True)
 
+def container_login_screen_css():
+    page = """
+        {
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Căn giữa theo chiều dọc */
+            align-items: center;    /* Căn giữa theo chiều ngang */
+
+            min-height: 80vh !important;
+            margin: 0px !important;  /* Xóa lề ngoài */
+            padding: 10px !important; /* Khoảng đệm trong */
+
+            /* Thêm đường viền */
+            border: 2px solid #4682B4 !important; /* Độ dày, kiểu và màu sắc */
+            border-radius: 0px; /* Bo góc nếu muốn, theo theme.baseRadius */
+        }
+    """
+    return page
+
+def container_login_screen_image_css():
+    page = """
+        {
+            background-color: #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; /* Đẩy xuống dưới cùng */
+            align-items: flex-end;    /* Căn sang bên phải */
+
+            min-height: 80vh !important;
+            margin: 0px !important;  /* Xóa lề ngoài */
+            padding: 20px !important; /* Khoảng đệm trong */
+        }
+    """
+    return page
+
 def container_page_css():
     # tùy chỉnh cho phần menu
     page =  """

@@ -1,15 +1,75 @@
 from assets.styles import container_page_css, container_main_css
 from models.transaction_model import TransactionModel
-from models.category_model import CategoryModel
 from analytics.analyzer import FinanceAnalyzer
 from analytics.visualizer import FinanceVisualizer
-from utils import get_format_amount, get_date_range_options, get_type_list, get_currencies_list
+from utils import get_format_amount, get_date_range_options
 
 from streamlit_extras.stylable_container import stylable_container # thư viện mở rộng của streamlit để add container với css
 
 import streamlit as st
 import pandas as pd
 import numpy as np
+
+# ======== CACHE FUNCTIONS =========
+@st.cache_data(ttl=300)
+def get_cached_dashboard_metrics(user_id: str, start_date, end_date):
+    """Cache dashboard metrics for 5 minutes"""
+    from analytics.analyzer import FinanceAnalyzer
+    models = st.session_state["models"]
+    
+    analyzer = FinanceAnalyzer(
+        user_id, 
+        models["user"], 
+        models["category"], 
+        models["transaction"]
+    )
+    
+    if start_date and end_date:
+        total_income = analyzer.calculate_total_by_type('Income', start_date, end_date)
+        total_expense = analyzer.calculate_total_by_type('Expense', start_date, end_date)
+    else:
+        total_income = analyzer.calculate_total_by_type('Income')
+        total_expense = analyzer.calculate_total_by_type('Expense')
+    
+    net_balance = total_income - total_expense
+    daily_average = analyzer.get_daily_average()
+    
+    return {
+        'total_income': total_income,
+        'total_expense': total_expense,
+        'net_balance': net_balance,
+        'daily_average': daily_average
+    }
+
+@st.cache_data(ttl=300)
+def get_cached_category_spending(user_id: str, start_date, end_date):
+    """Cache category spending for 5 minutes"""
+    from analytics.analyzer import FinanceAnalyzer
+    models = st.session_state["models"]
+    
+    analyzer = FinanceAnalyzer(
+        user_id, 
+        models["user"], 
+        models["category"], 
+        models["transaction"]
+    )
+    
+    return analyzer.get_spending_by_category(start_date, end_date)
+
+@st.cache_data(ttl=300)
+def get_cached_monthly_trend(user_id: str, months=6):
+    """Cache monthly trend for 5 minutes"""
+    from analytics.analyzer import FinanceAnalyzer
+    models = st.session_state["models"]
+    
+    analyzer = FinanceAnalyzer(
+        user_id, 
+        models["user"], 
+        models["category"], 
+        models["transaction"]
+    )
+    
+    return analyzer.get_monthly_trend(months)
 
 # ======== CONFIG =========
 def render_line_chart():
@@ -42,7 +102,7 @@ def render_line_chart():
     # st.line_chart(df['Daily_Expense'])
 
 # ======== RENDER DASHBOARD ==========
-def render_dashboard_func_panel(category_model: CategoryModel, transaction_model: TransactionModel):
+def render_dashboard_func_panel():
     _, cFilter = st.columns([1, 1])
 
     # Filter popover
@@ -55,32 +115,24 @@ def render_dashboard_func_panel(category_model: CategoryModel, transaction_model
 def render_metric(analyzer: FinanceAnalyzer, start_date, end_date):
     """Render the metrics cards at the top of dashboard"""
     default_currency = analyzer.user_model.get_default_currency(analyzer.user_id)
-
-    if start_date and end_date:
-        total_income = analyzer.calculate_total_by_type('Income', start_date, end_date)
-        total_expense = analyzer.calculate_total_by_type('Expense', start_date, end_date)
-    else:
-        total_income = analyzer.calculate_total_by_type('Income')
-        total_expense = analyzer.calculate_total_by_type('Expense')
     
-    net_balance = total_income - total_expense
+    # 🔥 Use cached metrics
+    metrics = get_cached_dashboard_metrics(
+        str(analyzer.user_id),
+        start_date,
+        end_date
+    )
 
     # Render metrics
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        total_income = get_format_amount(default_currency, total_income)
-        # res_income = analyzer.compare_periods(start_date, end_date, 'Income')
-        # print(res_income)
-        # delta = f'{res_income["percent"]:.2f}%' if res_income["percent"] is not None else "N/A"
-        # delta_color = "inverse" if res_income["trend"] == "up" else "normal"
-
-        st.metric("💰 Total Income", total_income, border=True)
+        st.metric("💰 Total Income", get_format_amount(default_currency, metrics['total_income']), border=True)
     with col2:
-        st.metric("💸 Total Expense", get_format_amount(default_currency, total_expense), border=True)
+        st.metric("💸 Total Expense", get_format_amount(default_currency, metrics['total_expense']), border=True)
     with col3:
-        st.metric("💳 Net Balance", get_format_amount(default_currency,net_balance),border=True)
+        st.metric("💳 Net Balance", get_format_amount(default_currency, metrics['net_balance']), border=True)
     with col4:
-        st.metric("📊 Daily Average", get_format_amount(default_currency, analyzer.get_daily_average()), border=True)
+        st.metric("📊 Daily Average", get_format_amount(default_currency, metrics['daily_average']), border=True)
 
 def render_charts(analyzer_model: FinanceAnalyzer, visualizer_model: FinanceVisualizer, start_date, end_date, currency):
     """Render the charts section with category and trend visualizations"""
@@ -89,7 +141,8 @@ def render_charts(analyzer_model: FinanceAnalyzer, visualizer_model: FinanceVisu
 
     with col1:
         # st.subheader("Category Spending")
-        category_spending = analyzer_model.get_spending_by_category(start_date, end_date)
+        #category_spending = analyzer_model.get_spending_by_category(start_date, end_date)
+        category_spending = get_cached_category_spending(str(st.session_state.user_id), start_date, end_date)
 
         if not category_spending.empty:
             fig = visualizer_model.plot_category_spending(category_spending, currency)
@@ -109,7 +162,9 @@ def render_charts(analyzer_model: FinanceAnalyzer, visualizer_model: FinanceVisu
 
     # Monthly trend
     st.subheader("Monthly Trend")
-    monthly_trend = analyzer_model.get_monthly_trend(months=6)
+    #monthly_trend = analyzer_model.get_monthly_trend(months=6)
+    monthly_trend = get_cached_monthly_trend(str(st.session_state.user_id), months=6)
+
     if not monthly_trend.empty:
         fig = visualizer_model.plot_monthly_trend(monthly_trend, currency)
         st.plotly_chart(fig, width='stretch')
@@ -118,7 +173,6 @@ def render_charts(analyzer_model: FinanceAnalyzer, visualizer_model: FinanceVisu
 
 def render_dashboard(analyzer_model: FinanceAnalyzer, transaction_model:TransactionModel, visualizer_model: FinanceVisualizer):
     models = st.session_state["models"]   # Lấy model từ App.py
-    category_model = models["category"]
     transaction_model = models["transaction"]
     visualizer_model = models["visualizer"]
 
@@ -132,7 +186,7 @@ def render_dashboard(analyzer_model: FinanceAnalyzer, transaction_model:Transact
         with cHeader:
             st.header("Dashboard")         
         with cFunc:
-            render_dashboard_func_panel(category_model=category_model, transaction_model=transaction_model)
+            render_dashboard_func_panel()
 
         # Line ngang sát menu
         st.markdown("""<hr style="margin: 10px 0; border: none; border-top: 2px solid #333; opacity: 0.3;">""", unsafe_allow_html=True)

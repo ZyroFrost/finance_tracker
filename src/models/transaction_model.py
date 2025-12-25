@@ -223,7 +223,7 @@ class TransactionModel:
                 "end_date": end_date,
             }
         )
-
+    
     def get_balance_by_date(self, user_id: ObjectId, date: date) -> float:
 
         # Get target currency (default currency of user)
@@ -232,18 +232,29 @@ class TransactionModel:
         # lấy list transaction theo ngày
         transactions = list(self.get_transactions(advanced_filters={"user_id": user_id, "start_date": date, "end_date": date}))
 
-         # Exchange currency for transactions in date list
+        if not transactions:
+            return 0
+
+        # 🔥 BATCH: Pre-fetch rates
+        exchange_model = ExchangeRateModel()
+        unique_currencies = {t['currency'] for t in transactions if t['currency'] != target_currency}
+        
+        rates_cache = {}
+        for curr in unique_currencies:
+            rate = exchange_model.get_rate(curr, target_currency)
+            rates_cache[curr] = rate.get(target_currency) if isinstance(rate, dict) else rate
+
+        # Convert amounts
         for t in transactions:
-            t["amount"] = ExchangeRateModel().convert_currency(t["amount"], from_currency=t["currency"], to_currency=target_currency)
+            if t['currency'] == target_currency:
+                continue
+            t["amount"] = t["amount"] * rates_cache.get(t['currency'], 1)
 
         # phân ra 2 list: income, expense
         income = [t["amount"] for t in transactions if t["type"] == "Income"]
         expense = [t["amount"] for t in transactions if t["type"] == "Expense"]
         
-        if None in income or None in expense:
-            balance = "Error when exchange currency"
-        else:
-            balance = sum(income) - sum(expense)
+        balance = sum(income) - sum(expense)
         return balance
     
     def count_transaction_by_user(self, user_id: ObjectId) -> int:

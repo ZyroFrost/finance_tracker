@@ -2,6 +2,7 @@ import streamlit as st
 import io, base64, time # chuyển đổi Image to base64 bỏ vào Icon button
 from PIL import Image # đọc image từa folder assets
 from streamlit_option_menu import option_menu # thư viện mở rộng của streamlit để add icon với css
+from streamlit_extras.stylable_container import stylable_container
 
 from models.category_model import CategoryModel
 from models.transaction_model import TransactionModel
@@ -10,7 +11,7 @@ from models.user_model import UserModel
 from analytics.analyzer import FinanceAnalyzer
 from analytics.visualizer import FinanceVisualizer
 
-from assets.styles import set_global_css, google_icon_css, option_menu_css, transaction_expander_css
+from assets.styles import set_global_css, google_icon_css, option_menu_css, transaction_expander_css, container_login_screen_css, container_login_screen_image_css
 from views.dashboard_view import render_dashboard
 from views.categories_view import render_categories
 from views.transactions_view import render_transactions
@@ -43,6 +44,27 @@ if not all(key in models for key in ['category', 'transaction', 'user']):
 def set_page(page_name):
     page_name = st.session_state["current_page"] 
     return page_name
+
+# ======== SESSION CLEANUP ========= (thêm tối ưu)
+def cleanup_temp_session_states():
+    """Remove temporary success message keys to prevent memory leak"""
+    keys_to_delete = [
+        k for k in st.session_state 
+        if k.startswith((
+            "edit_trans_success_",
+            "edit_budget_success_",
+            "edit_cate_success_",
+            "category_added",
+            "transaction_added",
+            "budget_add_success"
+        ))
+    ]
+    for k in keys_to_delete:
+        del st.session_state[k]
+
+# Run cleanup periodically
+if len(st.session_state) > 100:
+    cleanup_temp_session_states()
 
 # ======== STYLES SETUP =========
 set_global_css()
@@ -81,14 +103,21 @@ def login_screen():
 
     # load css cho icon
     google_icon_css()
-    col1, col2 = st.columns([1, 3])
-    with col1.container(horizontal_alignment="center"):
-        st.image("src/assets/logo.png", width=300)
-        st.markdown("<h3 style='text-align: center;'>Login to your account</h3>", unsafe_allow_html=True)
-        if st.button(f'![icon](data:image/png;base64,{btn_b64})  Log in with Google', use_container_width=True):
-            st.login()
-    with col2.container(horizontal_alignment="center"):
-        st.image("src/assets/google_logo.png", width=50)
+    with st.container(horizontal_alignment="center"):
+        col1, col2 = st.columns([1, 3], gap=None)
+        with col1:
+            with stylable_container(key="login_screen", css_styles=container_login_screen_css()):      
+                st.image("src/assets/logo.png", width=300)
+                st.markdown("<h3 style='text-align: center;'>Login to your account</h3>", unsafe_allow_html=True)
+                if st.button(f'![icon](data:image/png;base64,{btn_b64})  Log in with Google', use_container_width=True):
+                        st.login()
+        with col2:
+            with stylable_container(key="login_screen_image", css_styles=container_login_screen_image_css()):
+                st.subheader("Introduce Personal Cash Flow App")
+                st.write("")
+                st.write("- Personal Cash Flow helps you track your income and expenses,")
+                st.write("- manage budgets, and understand how your money flows over time.")
+                st.image("src/assets/login_screen.png", width=500)
 
 # Check user in database, if there is no user, show login screen
 # if not st.user.is_logged_in:
@@ -178,3 +207,6 @@ elif st.session_state['current_page'] == "Settings":
     render_settings()
 elif st.session_state['current_page'] == "Log out":
     st.logout()
+
+# Debug
+st.write("DEBUG:", st.secrets.get("auth", {}).get("redirect_uri"))

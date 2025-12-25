@@ -102,14 +102,30 @@ def render_trans_func_panel(category_model: CategoryModel, transaction_model: Tr
 
             # Select category
             categories = category_model.get_categories()
-            st.selectbox("📦 Category Name", options=categories, format_func=lambda c: c["name"], key="select_category2")
+            # Add "All" option at the beginning
+            all_option = {"_id": None, "name": "All"}
+            categories_with_all = [all_option] + categories
+            
+            st.selectbox(
+                "📦 Category Name", 
+                options=categories_with_all, 
+                format_func=lambda c: c["name"], 
+                key="select_category2"
+            )
             
             # Select date range
             date_option = get_date_range_options()
             st.select_slider("📅 Date Range Option", options=list(date_option.keys()), key="date_range2")
 
             # Select currency
-            st.selectbox("💰 Currency", get_currencies_list(), key="currency2")
+            currency_all_option = {"_id": None, "name": "All"}
+
+            currencies = get_currencies_list()
+            # nếu currency là string → convert thành dict
+            currencies = [{"_id": c, "name": c} for c in currencies]
+
+            currencies_with_all = [currency_all_option] + currencies
+            st.selectbox("💰 Currency", options=currencies_with_all, format_func=lambda c: c["name"], key="currency2")
 
             # Select amount
             min, max = st.columns(2)
@@ -138,20 +154,22 @@ def render_trans_func_panel(category_model: CategoryModel, transaction_model: Tr
             if bFilter.button("🔎 Search", use_container_width=True):
                 normalized_filter = {}
 
-                # category
-                if filter_data["category_id"]:
-                    normalized_filter["category_id"] = filter_data["category_id"]["_id"]
+                # category - Only add if not "All"
+                selected_category = filter_data["category_id"]
+                if selected_category and selected_category.get("_id") is not None:
+                    normalized_filter["category_id"] = selected_category["_id"]
 
-                # date range (🔥 QUAN TRỌNG)
+                # date range
                 date_ranges = get_date_range_options()
                 if filter_data["date_range"] in date_ranges:
                     start_date, end_date = date_ranges[filter_data["date_range"]]
                     normalized_filter["start_date"] = start_date
                     normalized_filter["end_date"] = end_date
 
-                # currency (filter, NOT convert)
-                if filter_data["currency"]:
-                    normalized_filter["currency"] = filter_data["currency"]
+                # currency - Only add if not "All"
+                selected_currency = filter_data["currency"]
+                if selected_currency and selected_currency.get("_id") is not None:
+                    normalized_filter["currency"] = selected_currency["name"]
 
                 # amount
                 if filter_data["min_amount"] > 0:
@@ -221,20 +239,15 @@ def render_trans_details(user_model: UserModel, category_model: CategoryModel, t
                 st.button("Collapse All", width="stretch", key=f"{category_type}_collapse_all", on_click=set_expand_all, args=(False,))
 
             # for loop by dates
+            # 🔥 OPTIMIZED: Group transactions by date in memory
+            from collections import defaultdict
+            trans_by_date_dict = defaultdict(list)
+            for t in trans_list_by_type:
+                trans_by_date_dict[t["date"]].append(t)
+
+            # for loop by dates
             for d in dates:
-                
-                dates = sorted({t["date"] for t in trans_list_by_type}, reverse=True)
-                #
-                trans_by_date_and_type = [
-                    t for t in trans_list_by_type
-                    if t["date"] == d
-                ]
-                    
-                # Xử lý nếu chọn All, thì list trans lấy tất cả (hàm riêng), còn ko thì lấy list lọc theo ngày và type
-                if category_type == "All":
-                    trans_by_date_and_type = list(transaction_model.get_transactions(advanced_filters={"start_date": d, "end_date": d}))
-                else:
-                    trans_by_date_and_type = list(transaction_model.get_transactions(advanced_filters={"start_date": d, "end_date": d, "type": category_type}))
+                trans_by_date_and_type = trans_by_date_dict.get(d, [])
 
                 # Get balance and format
                 balance = transaction_model.get_balance_by_date(user_id=st.session_state.user_id, date=d)
@@ -399,14 +412,23 @@ def render_transactions(analyzer_model: FinanceAnalyzer):
         st.markdown("""<hr style="margin: 10px 0; border: none; border-top: 2px solid #333; opacity: 0.3;">""", unsafe_allow_html=True)
 
         # Main
+        # Force reset to "All" tab when navigating to Transactions page
+        if st.session_state.get("current_page") == "Transactions":
+            if "trans_tab_initialized" not in st.session_state:
+                st.session_state.trans_tab_initialized = True
+                # Force rerun to ensure All tab is selected
+                if st.session_state.get("active_tab") != 0:
+                    st.session_state.active_tab = 0
+                    st.rerun()
+
         if "active_tab" not in st.session_state:
-            st.session_state.active_tab = 0  # Index 0 = "All", control tab default, open "All" tab when open page
+            st.session_state.active_tab = 0  # Index 0 = "All"
 
         tab_names = ["All", "Expense", "Income"]
         tabs = st.tabs(tab_names)
-        
-        # Render tất cả tabs nhưng chỉ show nội dung của tab active
-        for (tab, tab_name) in zip(tabs, tab_names): # zip use to combine list, tuple,...
+
+        # Render tất cả tabs
+        for (tab, tab_name) in zip(tabs, tab_names):
             with tab:
                 render_trans_details(user_model, category_model, transaction_model, analyzer_model, category_type=tab_name)
 

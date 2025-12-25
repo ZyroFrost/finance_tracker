@@ -136,21 +136,34 @@ class FinanceAnalyzer:
         else:
             transactions = self.transaction_model.get_transactions()
 
-        total = 0
-        for t in transactions:
-            if t["type"] != transaction_type:
-                continue
+        # Filter by type
+        filtered_trans = [t for t in transactions if t["type"] == transaction_type]
+        
+        if not filtered_trans:
+            return 0
 
+        default_currency = self.user_model.get_default_currency(self.user_id)
+        
+        # 🔥 BATCH: Pre-fetch rates
+        unique_currencies = {t['currency'] for t in filtered_trans if t['currency'] != default_currency}
+        rates_cache = {}
+        for curr in unique_currencies:
+            rate = self.exchange_rate_model.get_rate(curr, default_currency)
+            rates_cache[curr] = rate.get(default_currency) if isinstance(rate, dict) else rate
+
+        # Calculate total
+        total = 0
+        for t in filtered_trans:
             amount = t["amount"]
             currency = t["currency"]
-
-            # 🔥 convert về default currency
-            amount = self.normalize_amount_to_user_currency(amount, currency)
-
-            total += amount
+            
+            if currency == default_currency:
+                total += amount
+            else:
+                total += amount * rates_cache.get(currency, 1)
 
         return total
-    
+        
     def calculate_total_by_filter(self, filter: dict):
         '''Calculates the total amount for a given transaction type and date range.'''
         transactions = self.transaction_model.get_transactions(advanced_filters=filter)
@@ -162,28 +175,41 @@ class FinanceAnalyzer:
         default_currency = self.user_model.get_default_currency(self.user_id)
         exchange = self.exchange_rate_model
 
-        # Lấy giao dịch
+        # Get transactions
         if start_date and end_date:
             transactions = self.transaction_model.get_transactions_by_date_range(start_date, end_date)
         else:
             transactions = self.transaction_model.get_transactions()
 
+        if not transactions:
+            return pd.DataFrame()
+
+        # BATCH: Get all unique currencies at once
+        unique_currencies = {t['currency'] for t in transactions if t['currency'] != default_currency}
+        
+        # Pre-fetch all rates in one go
+        rates_cache = {}
+        for curr in unique_currencies:
+            rate = exchange.get_rate(curr, default_currency)
+            rates_cache[curr] = rate.get(default_currency) if isinstance(rate, dict) else rate
+
+        # Convert using cached rates
         normalized_transactions = []
         for t in transactions:
             amount = t['amount']
             currency = t['currency']
-            converted_amount = exchange.convert_currency(amount, from_currency=currency, to_currency=default_currency)
+            
+            if currency == default_currency:
+                converted_amount = amount
+            else:
+                converted_amount = amount * rates_cache.get(currency, 1)
 
-            t_copy=t.copy()
+            t_copy = t.copy()
             t_copy['amount'] = converted_amount
             t_copy['currency'] = default_currency
-            
             normalized_transactions.append(t_copy)
 
         transactions_converted =  normalized_transactions
-
-        if not transactions:
-            return pd.DataFrame()
 
         # Convert dataframe
         df = pd.DataFrame(transactions_converted)
@@ -220,7 +246,7 @@ class FinanceAnalyzer:
     def get_spent_for_month_by_category(self, category_id, month, year, budget_currency):
         """Get total amount spent for a given month and year"""
         start_date = datetime(year, month, 1)
-        end_date = datetime(year, month + 1, 1) if month < 12 else datetime(year + 1, 1, 1) # Check if month is December
+        end_date = datetime(year, month + 1, 1) if month < 12 else datetime(year + 1, 1, 1)
 
         filter = {
             "type": "Expense",
@@ -229,21 +255,30 @@ class FinanceAnalyzer:
             "end_date": end_date
         }
 
-        # Get transactions
         transactions = self.transaction_model.get_transactions(advanced_filters=filter)
+
+        if not transactions:
+            return 0
+
+        # 🔥 BATCH: Pre-fetch rates
+        unique_currencies = {t['currency'] for t in transactions if t['currency'] != budget_currency}
+        rates_cache = {}
+        for curr in unique_currencies:
+            rate = self.exchange_rate_model.get_rate(curr, budget_currency)
+            rates_cache[curr] = rate.get(budget_currency) if isinstance(rate, dict) else rate
 
         total = 0
         for t in transactions:
             trans_amount = t['amount']
             trans_currency = t['currency']
 
-            if trans_currency != budget_currency:
-                trans_amount = self.exchange_rate_model.convert_currency(trans_amount, trans_currency, budget_currency)
-
-            total += trans_amount
+            if trans_currency == budget_currency:
+                total += trans_amount
+            else:
+                total += trans_amount * rates_cache.get(trans_currency, 1)
 
         return total
-    
+
     def get_spent_for_year_by_category(self, category_id, year, budget_currency):
         """Get total amount spent for a given year"""
         start_date = datetime(year, 1, 1)
@@ -256,18 +291,27 @@ class FinanceAnalyzer:
             "end_date": end_date
         }
 
-        # Get transactions
         transactions = self.transaction_model.get_transactions(advanced_filters=filter)
+
+        if not transactions:
+            return 0
+
+        # 🔥 BATCH: Pre-fetch rates
+        unique_currencies = {t['currency'] for t in transactions if t['currency'] != budget_currency}
+        rates_cache = {}
+        for curr in unique_currencies:
+            rate = self.exchange_rate_model.get_rate(curr, budget_currency)
+            rates_cache[curr] = rate.get(budget_currency) if isinstance(rate, dict) else rate
 
         total = 0
         for t in transactions:
             trans_amount = t['amount']
             trans_currency = t['currency']
 
-            if trans_currency != budget_currency:
-                trans_amount = self.exchange_rate_model.convert_currency(trans_amount, trans_currency, budget_currency)
-
-            total += trans_amount
+            if trans_currency == budget_currency:
+                total += trans_amount
+            else:
+                total += trans_amount * rates_cache.get(trans_currency, 1)
 
         return total
     
@@ -287,14 +331,22 @@ class FinanceAnalyzer:
         df = pd.DataFrame(transactions)
         df["date"] = pd.to_datetime(df["date"])
 
-        # normalize currency
+        # 🔥 BATCH: Pre-fetch all exchange rates
         default_currency = self.user_model.get_default_currency(self.user_id)
-        df["amount"] = df.apply(
-            lambda r: self.exchange_rate_model.convert_currency(
-                r["amount"], r["currency"], default_currency
-            ),
-            axis=1
-        )
+        unique_currencies = {t['currency'] for t in transactions if t['currency'] != default_currency}
+        
+        rates_cache = {}
+        for curr in unique_currencies:
+            rate = self.exchange_rate_model.get_rate(curr, default_currency)
+            rates_cache[curr] = rate.get(default_currency) if isinstance(rate, dict) else rate
+
+        # Convert using cached rates
+        def convert_amount(row):
+            if row['currency'] == default_currency:
+                return row['amount']
+            return row['amount'] * rates_cache.get(row['currency'], 1)
+        
+        df["amount"] = df.apply(convert_amount, axis=1)
 
         df["month"] = df["date"].dt.to_period("M")
 
@@ -308,6 +360,45 @@ class FinanceAnalyzer:
         monthly.index = monthly.index.astype(str)
 
         return monthly
+
+    # Old code
+    # def get_monthly_trend(self, months=6):
+    #     """Get monthly trend"""
+        
+    #     end_date = pd.Timestamp.today().normalize()
+    #     start_date = end_date - pd.DateOffset(months=months)
+
+    #     transactions = self.transaction_model.get_transactions_by_date_range(
+    #         start_date, end_date
+    #     )
+
+    #     if not transactions:
+    #         return pd.DataFrame()
+
+    #     df = pd.DataFrame(transactions)
+    #     df["date"] = pd.to_datetime(df["date"])
+
+    #     # normalize currency
+    #     default_currency = self.user_model.get_default_currency(self.user_id)
+    #     df["amount"] = df.apply(
+    #         lambda r: self.exchange_rate_model.convert_currency(
+    #             r["amount"], r["currency"], default_currency
+    #         ),
+    #         axis=1
+    #     )
+
+    #     df["month"] = df["date"].dt.to_period("M")
+
+    #     monthly = (
+    #         df.groupby(["month", "type"])["amount"]
+    #         .sum()
+    #         .unstack(fill_value=0)
+    #     )
+
+    #     # 🔥 QUAN TRỌNG: ép index thành string
+    #     monthly.index = monthly.index.astype(str)
+
+    #     return monthly
 
     def get_daily_average(self):
         """

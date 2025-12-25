@@ -86,9 +86,23 @@ class UserModel:
         return user
     
     def get_default_currency(self, user_id: ObjectId) -> str:
+        # Handle both ObjectId and string
+        if not isinstance(user_id, ObjectId):
+            user_id = ObjectId(user_id)
+        
         user = self.collection.find_one({'_id': user_id})
-        return user.get("display_currency")
+        
+        # Handle case when user not found
+        if user is None:
+            return "USD"  # Default fallback currency
+        
+        return user.get("display_currency", "USD")
     
+    # Old code 
+    # def get_default_currency(self, user_id: ObjectId) -> str:
+    #     user = self.collection.find_one({'_id': user_id})
+    #     return user.get("display_currency")
+
     def update_display_currency(self, user_id: ObjectId, currency: str) -> bool:
         if not isinstance(user_id, ObjectId):
             user_id = ObjectId(user_id)

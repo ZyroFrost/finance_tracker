@@ -9,7 +9,7 @@ load_dotenv()
 # MONGO configuration
 MONGO_URI = os.getenv("MONGO_URI", "localhost:2017") # localhost:2017 by default (prevent errors when running on localhost)
 DATABASE_NAME = "finance_tracker_2"
-APP_NAME="FINANCE TRACKER"
+APP_NAME="Personal Cashflow"
 
 # Collections (tương đương tables trong SQL)
 COLLECTIONS = {
