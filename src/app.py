@@ -1,5 +1,6 @@
 import streamlit as st
 import io, base64, time, os
+
 from PIL import Image # đọc image từa folder assets
 from streamlit_option_menu import option_menu # thư viện mở rộng của streamlit để add icon với css
 from streamlit_extras.stylable_container import stylable_container
@@ -207,11 +208,3 @@ elif st.session_state['current_page'] == "Settings":
     render_settings()
 elif st.session_state['current_page'] == "Log out":
     st.logout()
-
-# Debug
-is_cloud = os.getenv("STREAMLIT_CLOUD") == "true"
-
-# Debug ONLY on local
-if not is_cloud:
-    redirect_uri = st.secrets.get("auth", {}).get("redirect_uri", "NOT SET")
-    st.write("DEBUG (LOCAL): redirect_uri =", redirect_uri)
