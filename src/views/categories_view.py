@@ -115,7 +115,7 @@ def render_category_list(category_model: CategoryModel, category_type: str):
                                 st.write(f"{item.get('icon')} {item.get('name')}")         
                                 st.caption(f"Type: {item.get('type')}")
                             with cright:
-                                st.write(f"Created at: {item.get("created_at").strftime("%d-%m-%Y")}")
+                                st.write(f"Created at: {item.get('created_at').strftime('%d-%m-%Y')}")
                                 st.caption(f"Last modified: {item.get('last_modified').strftime('%d-%m-%Y')}")
                                 
                         with cButton:
