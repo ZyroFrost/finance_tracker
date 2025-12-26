@@ -58,7 +58,7 @@ def delete_category_dialog(category_model: CategoryModel, transaction_model: Tra
 
             result = False
 
-            if strategy == "Reassign all transactions and budgets to another category":
+            if strategy == "Reassign all related transactions and budgets to another category":
                 result = category_model.reassign_category(transaction_model, budget_model, old_category_id=cate_id, new_category_id=new_category_id)
                 
             elif strategy == "Delete category, all transactions, and all related budgets":
