@@ -1,5 +1,6 @@
 from core import config
 import streamlit as st
+import base64
 
 def set_global_css():
     # Set page config phải đặt đầu tiên, nếu nằm sau st nào khác thì sẽ báo lỗi
@@ -43,9 +44,9 @@ def container_login_screen_css():
             justify-content: center; /* Căn giữa theo chiều dọc */
             align-items: center;    /* Căn giữa theo chiều ngang */
 
-            min-height: 80vh !important;
+            min-height: calc(100vh - 56px);
             margin: 0px !important;  /* Xóa lề ngoài */
-            padding: 10px !important; /* Khoảng đệm trong */
+            padding: 34px !important; /* Khoảng đệm trong */
 
             /* Thêm đường viền */
             border: 2px solid #4682B4 !important; /* Độ dày, kiểu và màu sắc */
@@ -54,21 +55,28 @@ def container_login_screen_css():
     """
     return page
 
-def container_login_screen_image_css():
-    page = """
-        {
-            background-color: #e5e7eb;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end; /* Đẩy xuống dưới cùng */
-            align-items: flex-end;    /* Căn sang bên phải */
+def get_base64_image(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
 
-            min-height: 80vh !important;
-            margin: 0px !important;  /* Xóa lề ngoài */
-            padding: 20px !important; /* Khoảng đệm trong */
-        }
-    """
-    return page
+def container_login_screen_image_css():
+
+    bg_base64 = get_base64_image("src/assets/login_screen.png")
+
+    st.markdown(
+        f"""
+        <div style="
+            height: calc(100vh - 56px);
+            width: 100%;
+            background-image: url('data:image/png;base64,{bg_base64}');
+            background-size: 100% 100%;
+            background-position: center;
+            background-repeat: no-repeat;
+        ">
+        </div>
+        """,
+        unsafe_allow_html=True
+)
 
 def container_page_css():
     # tùy chỉnh cho phần menu

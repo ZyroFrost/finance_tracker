@@ -104,21 +104,18 @@ def login_screen():
 
     # load css cho icon
     google_icon_css()
-    with st.container(horizontal_alignment="center"):
-        col1, col2 = st.columns([1, 3], gap=None)
-        with col1:
-            with stylable_container(key="login_screen", css_styles=container_login_screen_css()):      
+    col1, col2 = st.columns([1, 3], gap=None, vertical_alignment="top")
+    with col1:
+        with stylable_container(key="login_screen", css_styles=container_login_screen_css()):    
+            with st.container(horizontal=True, horizontal_alignment="center", vertical_alignment="top"):  
                 st.image("src/assets/logo.png", width=300)
                 st.markdown("<h3 style='text-align: center;'>Login to your account</h3>", unsafe_allow_html=True)
                 if st.button(f'![icon](data:image/png;base64,{btn_b64})  Log in with Google', use_container_width=True):
                         st.login()
-        with col2:
-            with stylable_container(key="login_screen_image", css_styles=container_login_screen_image_css()):
-                st.subheader("Introduce Personal Cash Flow App")
-                st.write("")
-                st.write("- Personal Cash Flow helps you track your income and expenses,")
-                st.write("- manage budgets, and understand how your money flows over time.")
-                st.image("src/assets/login_screen.png", width=500)
+    with col2:
+        container_login_screen_image_css()
+        #st.image("src/assets/login_screen.png", width=700)
+
 
 # Check user in database, if there is no user, show login screen
 # if not st.user.is_logged_in:
@@ -209,6 +206,6 @@ elif st.session_state['current_page'] == "Budgets":
 
 elif st.session_state['current_page'] == "Settings":
     render_settings()
-    
+
 elif st.session_state['current_page'] == "Log out":
     st.logout()
