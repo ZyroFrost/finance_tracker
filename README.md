@@ -276,9 +276,11 @@ Total: 20 points
 - User-scoped validation (category must belong to user)
 - Implementation: `transaction_model.py`, `transactions_view.py` (frontend + backend)
 
-### 7. Bonus - Multi-Currency Support with Exchange Rate Management
+### 7. Bonus - Multi-Currency Support with Exchange Rate Management and Data Filter
 - 6 supported currencies: USD, VND, JPY, EUR, CNY, AUD
 - Automatic currency conversion for all transactions and budgets
 - Real-time exchange rates from ExchangeRate-API
 - Smart caching: Rates cached for 24 hours to minimize API calls
 - User preference: Each user can set default display currency
+- Transaction type filter: toggle between category names or all, toggle between all currencies, minimum and maximum amount
+- Budget period filter: view budgets by category names
