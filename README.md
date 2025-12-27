@@ -212,14 +212,19 @@ streamlit run src/app.py
 ## 🖼️ App Screenshots
 ### Login screen
 <img width="1791" height="890" alt="image" src="https://github.com/user-attachments/assets/b407b972-96a0-4ec4-afae-79216aef09b9" />
+<!-- break -->
 ### Dashboard
 <img width="1832" height="910" alt="image" src="https://github.com/user-attachments/assets/c474ef2d-4317-4971-a8cb-b3a38989a785" />
+<!-- break -->
 ### Categories management
 <img width="1797" height="644" alt="image" src="https://github.com/user-attachments/assets/81f1076e-1638-47ca-b2e7-7abd99d54707" />
+<!-- break -->
 ### Transactions
 <img width="1820" height="875" alt="image" src="https://github.com/user-attachments/assets/0c2e4a73-bb19-4904-938a-08ba3f8d68c8" />
+<!-- break -->
 ### Budgets
 <img width="1802" height="785" alt="image" src="https://github.com/user-attachments/assets/55573b17-6818-4705-b8fe-cc012d361a1c" />
+<!-- break -->
 
 # 📋 Submission Checklist
 ## 🎯 Selected topics and total points
