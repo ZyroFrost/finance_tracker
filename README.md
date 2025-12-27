@@ -212,7 +212,7 @@ streamlit run src/app.py
 ## 🖼️ App Screenshots
 <h3>Login screen</h3>
 <img width="1791" height="890" alt="image" src="https://github.com/user-attachments/assets/b407b972-96a0-4ec4-afae-79216aef09b9" />
-***
+---
 <img width="1832" height="910" alt="image" src="https://github.com/user-attachments/assets/c474ef2d-4317-4971-a8cb-b3a38989a785" />
 ***
 <img width="1797" height="644" alt="image" src="https://github.com/user-attachments/assets/81f1076e-1638-47ca-b2e7-7abd99d54707" />
