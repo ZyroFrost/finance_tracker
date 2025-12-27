@@ -1,4 +1,3 @@
-<img width="1797" height="644" alt="image" src="https://github.com/user-attachments/assets/a9c7f24a-67ee-48ef-af59-1651aabafa5d" /># 📊 Finance Tracker – Streamlit + MongoDB
 ## 🧩 Overview
 Finance Tracker is a lightweight financial management application that helps users keep track of their spending and earnings. It supports adding and editing transactions, organizing them by category and date,
 and displaying helpful charts to understand financial habits and gain better insights. The app is built with Streamlit and uses MongoDB Atlas to store data securely and reliably.
@@ -195,6 +194,7 @@ git push
 <img width="1797" height="644" alt="image" src="https://github.com/user-attachments/assets/81f1076e-1638-47ca-b2e7-7abd99d54707" />
 <img width="1820" height="875" alt="image" src="https://github.com/user-attachments/assets/0c2e4a73-bb19-4904-938a-08ba3f8d68c8" />
 <img width="1802" height="785" alt="image" src="https://github.com/user-attachments/assets/55573b17-6818-4705-b8fe-cc012d361a1c" />
+<img width="1797" height="644" alt="image" src="https://github.com/user-attachments/assets/a9c7f24a-67ee-48ef-af59-1651aabafa5d" /># 📊 Finance Tracker – Streamlit + MongoDB
 
 # Submission Checklist
 ## 🎯 Selected topics and total points
