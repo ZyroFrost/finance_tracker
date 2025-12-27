@@ -1,6 +1,6 @@
 # 📊 Personal Cashflow – Streamlit + MongoDB
 ## 🧩 Overview
-Finance Tracker is a lightweight financial management application that helps users keep track of their spending and earnings. It supports adding and editing transactions, organizing them by category and date,
+Personal Cashflow is a lightweight financial management application that helps users keep track of their spending and earnings. It supports adding and editing transactions, organizing them by category and date,
 and displaying helpful charts to understand financial habits and gain better insights. The app is built with Streamlit and uses MongoDB Atlas to store data securely and reliably.
 
 ## ⭐ Features
@@ -22,8 +22,8 @@ and displaying helpful charts to understand financial habits and gain better ins
 ## 📦 Installation
 ### Step 1. Clone the project
 ```bash
-git clone https://github.com/ZyroFrost/finance_tracker.git
-cd finance_tracker
+git clone https://github.com/ZyroFrost/personal_cashflow.git
+cd personal_cashflow
 ```
 
 ### Step 2. Create a virtual environment
@@ -62,21 +62,22 @@ pip install -r requirements.txt
 
 ```bash
 MONGO_URI=mongodb+srv://username:password@cluster0.abc123.mongodb.net/?retryWrites=true&w=majority
-DATABASE_NAME=finance_tracker
+DATABASE_NAME="your-database-name"
 ```
 - **Important**: Make sure .env is in .gitignore. It contains secrets and should not be public.
 
 ### Step 6. Set Up Google Authentication (optional)
 - This step is required only if you use Google Login (OAuth)
-- If you don't have Google OAuth, follow this guide:
+- If you don't have Google OAuth, follow this guide:<br>
 https://medium.com/@tony.infisical/guide-to-using-oauth-2-0-to-access-google-apis-dead94d6866d
 
-### Step 7. Create .streamlit/secrets.toml
+### Step 7. Create .streamlit/secrets.toml (Local)
 - If you are using Google OAuth, create the file in project root:
 ```bash
 .streamlit/secrets.toml
 ```
 - Add the following:
+  - For local:
 ```bash
 [auth]
 redirect_uri = "http://localhost:8501/oauth2callback"
@@ -85,6 +86,7 @@ client_id = "your-client-id.apps.googleusercontent.com"
 client_secret = "your-client-secret"
 server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
 ```
+
 - **Important**: Make sure .streamlit/secrets.toml is in .gitignore. It contains secrets and should not be public.
 
 ## ▶️ Running the App
@@ -125,11 +127,11 @@ git push
 
 ```bash
 MONGO_URI="your-mongodb-uri"
-DATABASE_NAME="finance_tracker"
+DATABASE_NAME="your-database-name"
 
 # If using Google OAuth:
 [auth]
-redirect_uri = "https://your-app-url.streamlit.app/oauth2callback"
+redirect_uri = "https://<your-streamlit-app-name>.streamlit.app/oauth2callback"
 cookie_secret = "your-random-secret-key"
 client_id = "your-client-id.apps.googleusercontent.com"
 client_secret = "your-client-secret"
@@ -139,7 +141,7 @@ server_metadata_url = "https://accounts.google.com/.well-known/openid-configurat
 ### Step 4. Deploy the app
 - Click Deploy and Streamlit Cloud will host the app automatically
 ```bash
-https://personal-cashflow.streamlit.app
+https://<your-streamlit-app-name>.streamlit.app
 ```
 
 ### Step 5. Update the deployed app (very important)
@@ -157,8 +159,8 @@ git push
 
 ### Run Locally
 ```bash
-git clone https://github.com/ZyroFrost/finance_tracker.git
-cd finance_tracker
+git clone https://github.com/ZyroFrost/personal_cashflow.git
+cd personal_cashflow
 pip install -r requirements.txt
 
 # Create .env file with your MongoDB URI
@@ -173,7 +175,7 @@ streamlit run src/app.py
 ## 📁 Project structure in local (How It Should Look)
 ```bash
 .
-└── finance_tracker/
+└── personal_cashflow/
     ├── .streamlit/
     │   ├── config.toml
     │   └── secrets.toml
@@ -284,3 +286,7 @@ Total: 20 points
 - User preference: Each user can set default display currency
 - Transaction type filter: toggle between category names or all, toggle between all currencies, minimum and maximum amount
 - Budget period filter: view budgets by category names
+
+# 📌 Final Notes
+At this stage, the project has fulfilled all required setup and functionality criteria, covering database integration, authentication, deployment, and data integrity considerations.  
+The application is ready for evaluation and practical use.
